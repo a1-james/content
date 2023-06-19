@@ -17,7 +17,8 @@ CMD_URL = API_V2_ENDPOINT
 API_VER = API_V2
 PAGE_SIZE_LIMIT_DICT = {API_V2: 2000, API_V1: 1000}
 API_V1_PAGE_LIMIT = 500
-POSSIBLE_FIELDS_TO_INCLUDE = ["All", "NetworkConnections", "Processes", "RegistryKeys", "UserStates", "HostStates", "FileStates",
+POSSIBLE_FIELDS_TO_INCLUDE = ["All", "NetworkConnections", "Processes", "RegistryKeys", "UserStates", "HostStates",
+                              "FileStates",
                               "CloudAppStates", "MalwareStates", "CustomerComments", "Triggers", "VendorInformation",
                               "VulnerabilityStates"]
 
@@ -67,7 +68,8 @@ def create_search_alerts_filters(args, is_fetch=False):
         filters.append(f"{filter_query}")
     if page_size:
         if PAGE_SIZE_LIMIT_DICT.get(API_VER, 1000) < page_size:
-            raise DemistoException(f"Please note that the page size limit for {API_VER} is {PAGE_SIZE_LIMIT_DICT.get(API_VER)}")
+            raise DemistoException(
+                f"Please note that the page size limit for {API_VER} is {PAGE_SIZE_LIMIT_DICT.get(API_VER)}")
         params['$top'] = str(page_size)
     if page and page_size:
         page = int(page)
@@ -96,14 +98,16 @@ def create_data_to_update(args):
     """
     relevant_data_to_update_per_version_dict: dict = RELEVANT_DATA_TO_UPDATE_PER_VERSION.get(API_VER, {})
     if all(not args.get(key) for key in list(relevant_data_to_update_per_version_dict.keys())):
-        raise DemistoException(f"No data relevant for {API_VER} to update was provided, please provide at least one of the"
-                               f" following: {(', ').join(list(relevant_data_to_update_per_version_dict.keys()))}.")
+        raise DemistoException(
+            f"No data relevant for {API_VER} to update was provided, please provide at least one of the"
+            f" following: {(', ').join(list(relevant_data_to_update_per_version_dict.keys()))}.")
     data: Dict[str, Any] = {}
     if API_VER == API_V1:
         vendor_information = args.get('vendor_information')
         provider_information = args.get('provider_information')
         if not vendor_information or not provider_information:
-            raise DemistoException("When using Legacy Alerts, both vendor_information and provider_information must be provided.")
+            raise DemistoException(
+                "When using Legacy Alerts, both vendor_information and provider_information must be provided.")
         data['vendorInformation'] = {
             'provider': provider_information,
             'vendor': vendor_information
@@ -136,10 +140,11 @@ def get_timestamp(time_description):
     return datetime.strftime(datetime.now() - timedelta(time_delta), '%Y-%m-%d')
 
 
-def capitalize_dict_keys_first_letter(response):
+def capitalize_dict_keys_first_letter(response, keys_to_replace:dict={'createdDateTime': 'CreatedDate'}):
     """
     Recursively creates a data dictionary where all key starts with capital letters.
     Args:
+        keys_to_replace: keys that should have custom replacements not according to capitalize_first_letter
         response (Dict / str): The dictionary to update.
     Returns:
         Dict: The updated dictionary.
@@ -151,8 +156,8 @@ def capitalize_dict_keys_first_letter(response):
         for key, value in response.items():
             if key == 'id':
                 parsed_dict['ID'] = value
-            elif key == 'createdDateTime':
-                parsed_dict['CreatedDate'] = value
+            elif keys_to_replace and key in keys_to_replace:
+                parsed_dict[keys_to_replace[key]] = value
             elif isinstance(value, dict):
                 parsed_dict[capitalize_first_letter(key)] = capitalize_dict_keys_first_letter(value)
             elif isinstance(value, list):
@@ -171,15 +176,17 @@ class MsGraphClient:
     Microsoft Graph Mail Client enables authorized access to a user's Office 365 mail data in a personal account.
     """
 
-    def __init__(self, tenant_id, auth_id, enc_key, app_name, base_url, verify, proxy, self_deployed,
+    def __init__(self, tenant_id, proxy, self_deployed,
                  certificate_thumbprint: Optional[str] = None, private_key: Optional[str] = None,
-                 managed_identities_client_id: Optional[str] = None, api_version: str = ""):
+                 managed_identities_client_id: Optional[str] = None, api_version: str = "", auth_code='', **kwargs):
         self.ms_client = MicrosoftClient(
-            tenant_id=tenant_id, auth_id=auth_id, enc_key=enc_key, app_name=app_name, base_url=base_url, verify=verify,
+            tenant_id=tenant_id,
             proxy=proxy, self_deployed=self_deployed, certificate_thumbprint=certificate_thumbprint,
             private_key=private_key,
+            auth_code=auth_code,
+
             managed_identities_client_id=managed_identities_client_id,
-            managed_identities_resource_uri=Resources.graph)
+            managed_identities_resource_uri=Resources.graph, **kwargs)
         if api_version == API_V1:
             global CMD_URL, API_VER
             API_VER = API_V1
@@ -215,6 +222,20 @@ class MsGraphClient:
         response = self.ms_client.http_request(method='POST', url_suffix=cmd_url, json_data=params)
         return response
 
+    def list_ediscovery_cases(self):
+        url = 'security/cases/ediscoveryCases/'
+        return self.ms_client.http_request(method='GET', url_suffix=url)
+
+    def create_edsicovery_case(self, display_name, description, external_id):
+        url = 'security/cases/ediscoveryCases'
+        return self.ms_client.http_request(method='POST', url_suffix=url, json_data=
+        {
+            'displayName': display_name,
+            'description': description,
+            'externalId': external_id
+        }
+                                           )
+
 
 def create_filter_query(filter_param: str, providers_param: str, service_sources_param: str):
     """
@@ -245,7 +266,8 @@ def create_filter_query(filter_param: str, providers_param: str, service_sources
     return filter_query
 
 
-def fetch_incidents(client: MsGraphClient, fetch_time: str, fetch_limit: int, filter: str, providers: str, service_sources: str) \
+def fetch_incidents(client: MsGraphClient, fetch_time: str, fetch_limit: int, filter: str, providers: str,
+                    service_sources: str) \
         -> list:
     """
     This function will execute each interval (default is 1 minute).
@@ -332,7 +354,8 @@ def search_alerts_command(client: MsGraphClient, args):
                 'Vendor': alert['vendorInformation']['vendor'],
                 'Provider': alert['vendorInformation']['provider']
             })
-        table_headers = ['ID', 'Vendor', 'Provider', 'Title', 'Category', 'Severity', 'CreatedDate', 'EventDate', 'Status']
+        table_headers = ['ID', 'Vendor', 'Provider', 'Title', 'Category', 'Severity', 'CreatedDate', 'EventDate',
+                         'Status']
     else:
         outputs = [capitalize_dict_keys_first_letter(alert) for alert in alerts]
         table_headers = ['ID', 'DetectionSource', 'ServiceSource', 'Title', 'Category', 'Severity', 'CreatedDate',
@@ -671,6 +694,40 @@ def create_alert_comment_command(client: MsGraphClient, args):
     return human_readable, ec, res
 
 
+def create_ediscovery_case_command(client: MsGraphClient, args:dict):
+    """
+    """
+    res = client.create_edsicovery_case(args.get('display_name'), args.get('description'), args.get('external_id'))
+    context = capitalize_dict_keys_first_letter(res, keys_to_replace={})
+    return CommandResults(
+        outputs_prefix='MsGraph.eDiscoveryCase',
+        outputs_key_field='id',
+        raw_response=res,
+        outputs=context,
+        readable_output=
+        tableToMarkdown('my header', context,
+                        headers=['DisplayName', 'ExterrnalId', 'Status', 'CreatedDateTime', 'LastModifiedDateTime'],
+                        headerTransform=pascalToSpace)
+    )
+
+
+def list_ediscovery_case_command(client: MsGraphClient, args):
+    """
+    """
+    res = client.list_ediscovery_cases()
+    cases = [capitalize_dict_keys_first_letter(comment) for comment in res.get('value', [])]
+    context = {
+        'ID': 'alert_id',
+        'Comments': 'comments'
+    }
+    ec = {
+        'MsGraph.AlertComment(val.ID && val.ID == obj.ID)': context
+    }
+    header = f'Microsoft Security Graph Create Alert Comment -'
+    human_readable = tableToMarkdown(header, 'comments', removeNull=True)
+    return human_readable, ec, res
+
+
 def test_function(client: MsGraphClient, args):
     """
        Performs basic GET request to check if the API is reachable and authentication is successful.
@@ -722,8 +779,10 @@ def main():
     enc_key = params.get('creds_enc_key', {}).get('password') or params.get('enc_key')
     use_ssl = not params.get('insecure', False)
     proxy = params.get('proxy', False)
-    certificate_thumbprint = params.get('creds_certificate', {}).get('identifier') or params.get('certificate_thumbprint')
-    private_key = replace_spaces_in_credential(params.get('creds_certificate', {}).get('password')) or params.get('private_key')
+    certificate_thumbprint = params.get('creds_certificate', {}).get('identifier') or params.get(
+        'certificate_thumbprint')
+    private_key = replace_spaces_in_credential(params.get('creds_certificate', {}).get('password')) or params.get(
+        'private_key')
     managed_identities_client_id = get_azure_managed_identities_client_id(params)
     self_deployed: bool = params.get('self_deployed', False) or managed_identities_client_id is not None
     api_version: str = params.get('api_version', API_V2)
@@ -737,24 +796,40 @@ def main():
 
     commands = {
         'test-module': test_function,
+        'msg-test': test_function,
         'msg-search-alerts': search_alerts_command,
         'msg-get-alert-details': get_alert_details_command,
         'msg-update-alert': update_alert_command,
         'msg-get-users': get_users_command,
         'msg-get-user': get_user_command,
         'msg-create-alert-comment': create_alert_comment_command,
+        'msg-create-ediscovery-case': create_ediscovery_case_command,
+        'msg-list-ediscovery-case': list_ediscovery_case_command
+
     }
     command = demisto.command()
     LOG(f'Command being called is {command}')
 
     try:
-        client: MsGraphClient = MsGraphClient(tenant_id=tenant, auth_id=auth_and_token_url, enc_key=enc_key,
-                                              app_name=APP_NAME, base_url=url, verify=use_ssl, proxy=proxy,
+        auth_code = params.get('auth_code')
+        redirect_uri = params.get('redirect_uri')
+        grant_type = AUTHORIZATION_CODE if auth_code and redirect_uri else CLIENT_CREDENTIALS
+
+        client: MsGraphClient = MsGraphClient(tenant_id=tenant,
+                                              auth_code=auth_code,
+                                              auth_id=auth_and_token_url,
+                                              enc_key=enc_key,
+                                              redirect_uri=redirect_uri,
+                                              app_name=APP_NAME,
+                                              base_url=url,
+                                              verify=use_ssl,
+                                              proxy=proxy,
                                               self_deployed=self_deployed,
                                               certificate_thumbprint=certificate_thumbprint,
                                               private_key=private_key,
                                               managed_identities_client_id=managed_identities_client_id,
-                                              api_version=api_version)
+                                              api_version=api_version,
+                                              grant_type=grant_type)
         if command == "fetch-incidents":
             fetch_time = params.get('fetch_time', '1 day')
             fetch_limit = params.get('fetch_limit', 10) or 10
@@ -765,9 +840,15 @@ def main():
                                         filter=fetch_filter, providers=fetch_providers,
                                         service_sources=fetch_service_sources)
             demisto.incidents(incidents)
+        elif demisto.command() == 'msg-generate-login-url':
+            return_results(generate_login_url(client.ms_client))
         else:
-            human_readable, entry_context, raw_response = commands[command](client, demisto.args())  # type: ignore
-            return_outputs(readable_output=human_readable, outputs=entry_context, raw_response=raw_response)
+            command_res = commands[command](client, demisto.args())
+            if isinstance(command_res, CommandResults):
+                return_results(command_res)
+            else:
+                human_readable, entry_context, raw_response = command_res  # type: ignore
+                return_outputs(readable_output=human_readable, outputs=entry_context, raw_response=raw_response)
 
     except Exception as err:
         return_error(str(err))

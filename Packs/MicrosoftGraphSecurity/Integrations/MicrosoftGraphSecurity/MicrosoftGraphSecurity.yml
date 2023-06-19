@@ -110,6 +110,16 @@ configuration:
   type: 8
   section: Connect
   advanced: true
+- display: Application redirect URI (for self-deployed mode)
+  name: redirect_uri
+  required: false
+  type: 0
+- additionalinfo: Get the Authorization code from steps 3-5 in the self deployed authorization
+    process.
+  display: Authorization code
+  name: auth_code
+  required: false
+  type: 4
 - display: Fetch incidents
   name: isFetch
   required: false
@@ -863,6 +873,46 @@ script:
     - contextPath: MsGraph.User.Name
       description: User name
       type: string
+  - deprecated: false
+    description: Tests connectivity to Microsoft Graph User.
+    execution: false
+    name: msg-test
+  - arguments: [ ]
+    description : Generate the login url used for Authorization code flow.
+    execution: false
+    name: msg-generate-login-url
+  - arguments:
+    - description: The name of the eDiscovery case.
+      isArray: false
+      name: display_name
+      required: true
+    - description: The case description.
+      isArray: false
+      name: description
+      required: false
+    - description: The external case number for customer reference.
+      isArray: false
+      name: external_id
+      required: false
+    description: Create a new ediscoveryCase object.
+    execution: false
+    name: msg-create-ediscovery-case
+  - arguments:
+    - description: The name of the eDiscovery case.
+      isArray: false
+      name: display_name
+      required: true
+    - description: The case description.
+      isArray: false
+      name: description
+      required: false
+    - description: The external case number for customer reference.
+      isArray: false
+      name: external_id
+      required: false
+    description: Create a new ediscoveryCase object.
+    execution: false
+    name: msg-list-ediscovery-case
   dockerimage: demisto/crypto:1.0.0.58768
   feed: false
   isfetch: true
