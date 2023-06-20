@@ -902,9 +902,17 @@ script:
       isArray: false
       name: case_id
       required: true
-    description: Create a new ediscoveryCase object.
+    description: Close an ediscoveryCase object.
     execution: false
     name:  msg-close-ediscovery-case
+  - arguments:
+    - description: The case id of the eDiscovery case.
+      isArray: false
+      name: case_id
+      required: true
+    description: Delete an ediscoveryCase object.
+    execution: false
+    name:  msg-delete-ediscovery-case
   - arguments:
     - description: The case id of the eDiscovery case.
       isArray: false

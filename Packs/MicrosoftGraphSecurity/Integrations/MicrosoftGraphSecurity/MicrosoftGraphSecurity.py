@@ -253,6 +253,10 @@ class MsGraphClient:
         url = f'security/cases/ediscoveryCases/{case_id}/close'
         self.ms_client.http_request(ok_codes=[204], method='POST', url_suffix=url, resp_type='text')
 
+    def delete_edsicovery_case(self, case_id):
+        url = f'security/cases/ediscoveryCases/{case_id}'
+        self.ms_client.http_request(ok_codes=[204], method='DELETE', url_suffix=url, resp_type='text')
+
 
 def create_filter_query(filter_param: str, providers_param: str, service_sources_param: str):
     """
@@ -771,6 +775,13 @@ def update_ediscovery_case_command(client: MsGraphClient, args):
     return CommandResults(readable_output='Case was updated successfully.')
 
 
+def delete_ediscovery_case_command(client: MsGraphClient, args):
+    """
+    """
+    client.delete_edsicovery_case(args.get('case_id'))
+    return CommandResults(readable_output='Case was deleted successfully.')
+
+
 def list_ediscovery_case_command(client: MsGraphClient, args):
     """
     """
@@ -861,7 +872,8 @@ def main():
         'msg-create-ediscovery-case': create_ediscovery_case_command,
         'msg-list-ediscovery-case': list_ediscovery_case_command,
         'msg-update-ediscovery-case': update_ediscovery_case_command,
-        'msg-close-ediscovery-case': close_ediscovery_case_command
+        'msg-close-ediscovery-case': close_ediscovery_case_command,
+        'msg-delete-ediscovery-case': delete_ediscovery_case_command
 
     }
     command = demisto.command()
