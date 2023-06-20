@@ -265,6 +265,12 @@ class MsGraphClient:
         url = f'security/cases/ediscoveryCases/{case_id}/custodians'
         return self.ms_client.http_request(method='POST', url_suffix=url, json_data={'email': email})
 
+    def list_ediscovery_custodians(self, case_id, custodian_id):
+        url = f'security/cases/ediscoveryCases/{case_id}/custodians'
+        if custodian_id:
+            url += f'/{custodian_id}'
+        return self.ms_client.http_request(method='GET', url_suffix=url)
+
 
 def create_filter_query(filter_param: str, providers_param: str, service_sources_param: str):
     """
@@ -752,7 +758,7 @@ def ediscovery_custodian_command_results(raw_custodian_list, raw_res=None):
         outputs=context_list,
         readable_output=
         tableToMarkdown('Results:', human_readable_list,
-                        headers=['DisplayName', 'Description','Email', 'CustodianStatus', 'CustodianId', 'CreatedDateTime',
+                        headers=['DisplayName','Email', 'CustodianStatus', 'CustodianId', 'CreatedDateTime',
                                  'LastModifiedDateTime', 'LastModifiedByName', 'ClosedByName', 'AcknowledgedDateTime',
                                  'HoldStatus', 'ReleasedDateTime'], headerTransform=pascalToSpace, removeNull=True))
 
@@ -842,6 +848,18 @@ def list_ediscovery_case_command(client: MsGraphClient, args):
     return ediscovery_cases_command_results(case_list[:args.get('limit', 50)], raw_res)
 
 
+def list_ediscovery_custodian_command(client: MsGraphClient, args):
+    """
+    """
+    raw_res = client.list_ediscovery_custodians(args.get('case_id'), args.get('custodian_id'))
+    if case_list := raw_res.get('value'):
+        demisto.info(f'returned {raw_res.get("@odata.count")} results from the api')
+    else:
+        case_list = [raw_res]  # api doesnt return a list if only 1 result
+
+    return ediscovery_custodian_command_results(case_list[:args.get('limit', 50)], raw_res)
+
+
 def test_function(client: MsGraphClient, args):
     """
        Performs basic GET request to check if the API is reachable and authentication is successful.
@@ -923,7 +941,8 @@ def main():
         'msg-close-ediscovery-case': close_ediscovery_case_command,
         'msg-reopen-ediscovery-case': reopen_ediscovery_case_command,
         'msg-delete-ediscovery-case': delete_ediscovery_case_command,
-        'msg-create-ediscovery-custodian': create_ediscovery_custodian_command
+        'msg-create-ediscovery-custodian': create_ediscovery_custodian_command,
+        'msg-list-ediscovery-custodian': list_ediscovery_custodian_command #todo custodians? plural?
 
     }
     command = demisto.command()

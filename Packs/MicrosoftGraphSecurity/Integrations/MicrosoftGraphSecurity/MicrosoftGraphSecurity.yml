@@ -954,7 +954,7 @@ script:
     execution: false
     name: msg-list-ediscovery-case
   - arguments:
-    - description: The id of the eDiscovery case; possible value:65b1460f-9076-40b8-a7ec-66d31ade3e8a.
+    - description: The id of the eDiscovery case.
       isArray: false
       name: case_id
       required: true
@@ -965,6 +965,18 @@ script:
     description: Create a new ediscoveryCase object.
     execution: false
     name: msg-create-ediscovery-custodian
+  - arguments:
+    - description: The id of the eDiscovery case.
+      isArray: false
+      name: case_id
+      required: true
+    - description: The id of the custodian on the given eDiscovery case.
+      isArray: false
+      name: custodian_id
+      required: false
+    description: Create a new ediscoveryCase object.
+    execution: false
+    name: msg-list-ediscovery-custodian
   dockerimage: demisto/crypto:1.0.0.58768
   feed: false
   isfetch: true
