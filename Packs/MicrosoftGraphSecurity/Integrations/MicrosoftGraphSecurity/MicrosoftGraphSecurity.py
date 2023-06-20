@@ -140,7 +140,7 @@ def get_timestamp(time_description):
     return datetime.strftime(datetime.now() - timedelta(time_delta), '%Y-%m-%d')
 
 
-def capitalize_dict_keys_first_letter(response, keys_to_replace:dict={'createdDateTime': 'CreatedDate'}):
+def capitalize_dict_keys_first_letter(response, keys_to_replace: dict = {'createdDateTime': 'CreatedDate'}):
     """
     Recursively creates a data dictionary where all key starts with capital letters.
     Args:
@@ -154,14 +154,15 @@ def capitalize_dict_keys_first_letter(response, keys_to_replace:dict={'createdDa
     parsed_dict: dict = {}
     if isinstance(response, dict):
         for key, value in response.items():
-            if key == 'id':
-                parsed_dict['ID'] = value
-            elif keys_to_replace and key in keys_to_replace:
+            if keys_to_replace and key in keys_to_replace:
                 parsed_dict[keys_to_replace[key]] = value
+            elif key == 'id':
+                parsed_dict['ID'] = value
             elif isinstance(value, dict):
                 parsed_dict[capitalize_first_letter(key)] = capitalize_dict_keys_first_letter(value)
             elif isinstance(value, list):
-                parsed_dict[capitalize_first_letter(key)] = [capitalize_dict_keys_first_letter(list_item) for list_item in value]
+                parsed_dict[capitalize_first_letter(key)] = [capitalize_dict_keys_first_letter(list_item) for list_item
+                                                             in value]
             else:
                 parsed_dict[capitalize_first_letter(key)] = value
     return parsed_dict
@@ -222,8 +223,10 @@ class MsGraphClient:
         response = self.ms_client.http_request(method='POST', url_suffix=cmd_url, json_data=params)
         return response
 
-    def list_ediscovery_cases(self):
-        url = 'security/cases/ediscoveryCases/'
+    def list_ediscovery_cases(self, case_id: str | None):
+        url = 'security/cases/ediscoveryCases'
+        if case_id:
+            url += f'/{case_id}'
         return self.ms_client.http_request(method='GET', url_suffix=url)
 
     def create_edsicovery_case(self, display_name, description, external_id):
@@ -233,8 +236,18 @@ class MsGraphClient:
             'displayName': display_name,
             'description': description,
             'externalId': external_id
-        }
-                                           )
+        })
+
+    def update_edsicovery_case(self, case_id, display_name, description, external_id):
+        url = f'security/cases/ediscoveryCases/{case_id}'
+        req = {}
+        if display_name:
+            req['displayName'] = display_name
+        if description:
+            req['description'] = description
+        if external_id:
+            req['externalId'] = external_id
+        self.ms_client.http_request(ok_codes=[204], method='PATCH', url_suffix=url, json_data=req,resp_type='text')
 
 
 def create_filter_query(filter_param: str, providers_param: str, service_sources_param: str):
@@ -694,38 +707,67 @@ def create_alert_comment_command(client: MsGraphClient, args):
     return human_readable, ec, res
 
 
-def create_ediscovery_case_command(client: MsGraphClient, args:dict):
+def create_ediscovery_case_command(client: MsGraphClient, args: dict):
     """
     """
     res = client.create_edsicovery_case(args.get('display_name'), args.get('description'), args.get('external_id'))
-    context = capitalize_dict_keys_first_letter(res, keys_to_replace={})
+    return ediscovery_cases_command_results([res], res)
+
+
+def ediscovery_cases_command_results(raw_case_list: list, raw_res=None):
+    """
+    TODO closed by name, Last Modified By Name
+    Args:
+        raw_res: the raw_response to be used. If not provided assumed response==raw_res
+        limit: max number of entries to return. Does not affect raw_result
+        raw_case_list: the raw response from the api, as a list
+
+    Returns:
+
+    """
+
+    def to_hr(ret_context: dict):
+        hr = ret_context.copy()
+        hr['LastModifiedByName'] = dict_safe_get(ret_context, ['LastModifiedBy', "User", "DisplayName"])
+        hr['ClosedByName'] = dict_safe_get(ret_context, ['ClosedBy', "User", "DisplayName"])
+        return hr
+
+    context_list = []
+    human_readable_list = []
+    for res in raw_case_list:
+        context = capitalize_dict_keys_first_letter(res, keys_to_replace={'status': 'CaseStatus', 'id': 'CaseId'})
+        context.pop('@odata.context', None)
+        context_list.append(context)
+        human_readable_list.append(to_hr(context))
     return CommandResults(
         outputs_prefix='MsGraph.eDiscoveryCase',
         outputs_key_field='id',
-        raw_response=res,
-        outputs=context,
+        raw_response=raw_res or raw_case_list,
+        outputs=context_list,
         readable_output=
-        tableToMarkdown('my header', context,
-                        headers=['DisplayName', 'ExterrnalId', 'Status', 'CreatedDateTime', 'LastModifiedDateTime'],
-                        headerTransform=pascalToSpace)
+        tableToMarkdown('Results:', human_readable_list,
+                        headers=['DisplayName', 'Description', 'ExternalId', 'CaseStatus','CaseId' 'CreatedDateTime',
+                                 'LastModifiedDateTime', 'LastModifiedByName', 'ClosedByName'],
+                        headerTransform=pascalToSpace, removeNull=True)
     )
 
+
+def update_ediscovery_case_command(client: MsGraphClient, args):
+    """
+    """
+    client.update_edsicovery_case(args.get('case_id'), args.get('display_name'), args.get('description'), args.get('external_id'))
+    return CommandResults(readable_output='Case was updated successfully.')
 
 def list_ediscovery_case_command(client: MsGraphClient, args):
     """
     """
-    res = client.list_ediscovery_cases()
-    cases = [capitalize_dict_keys_first_letter(comment) for comment in res.get('value', [])]
-    context = {
-        'ID': 'alert_id',
-        'Comments': 'comments'
-    }
-    ec = {
-        'MsGraph.AlertComment(val.ID && val.ID == obj.ID)': context
-    }
-    header = f'Microsoft Security Graph Create Alert Comment -'
-    human_readable = tableToMarkdown(header, 'comments', removeNull=True)
-    return human_readable, ec, res
+    raw_res = client.list_ediscovery_cases(args.get('case_id'))
+    if args.get('case_id'):
+        case_list = [raw_res]  # api doesnt return a list
+    else:
+        case_list = raw_res.get('value')
+        demisto.info(f'returned {raw_res.get("@odata.count")} results from the api')
+    return ediscovery_cases_command_results(case_list[:args.get('limit', 50)], raw_res)
 
 
 def test_function(client: MsGraphClient, args):
@@ -804,7 +846,8 @@ def main():
         'msg-get-user': get_user_command,
         'msg-create-alert-comment': create_alert_comment_command,
         'msg-create-ediscovery-case': create_ediscovery_case_command,
-        'msg-list-ediscovery-case': list_ediscovery_case_command
+        'msg-list-ediscovery-case': list_ediscovery_case_command,
+        'msg-update-ediscovery-case': update_ediscovery_case_command
 
     }
     command = demisto.command()

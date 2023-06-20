@@ -898,6 +898,10 @@ script:
     execution: false
     name: msg-create-ediscovery-case
   - arguments:
+    - description: The case id of the eDiscovery case.
+      isArray: false
+      name: case_id
+      required: true
     - description: The name of the eDiscovery case.
       isArray: false
       name: display_name
@@ -909,6 +913,18 @@ script:
     - description: The external case number for customer reference.
       isArray: false
       name: external_id
+      required: false
+    description: Update an ediscoveryCase object.
+    execution: false
+    name: msg-update-ediscovery-case
+  - arguments:
+    - description: The id of the eDiscovery case; possible value:65b1460f-9076-40b8-a7ec-66d31ade3e8a.
+      isArray: false
+      name: case_id
+      required: false
+    - description: The max number of results to return. Default is 50.
+      isArray: false
+      name: limit
       required: false
     description: Create a new ediscoveryCase object.
     execution: false
