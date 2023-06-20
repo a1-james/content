@@ -247,7 +247,11 @@ class MsGraphClient:
             req['description'] = description
         if external_id:
             req['externalId'] = external_id
-        self.ms_client.http_request(ok_codes=[204], method='PATCH', url_suffix=url, json_data=req,resp_type='text')
+        self.ms_client.http_request(ok_codes=[204], method='PATCH', url_suffix=url, json_data=req, resp_type='text')
+
+    def close_edsicovery_case(self, case_id):
+        url = f'security/cases/ediscoveryCases/{case_id}/close'
+        self.ms_client.http_request(ok_codes=[204], method='POST', url_suffix=url, resp_type='text')
 
 
 def create_filter_query(filter_param: str, providers_param: str, service_sources_param: str):
@@ -746,17 +750,26 @@ def ediscovery_cases_command_results(raw_case_list: list, raw_res=None):
         outputs=context_list,
         readable_output=
         tableToMarkdown('Results:', human_readable_list,
-                        headers=['DisplayName', 'Description', 'ExternalId', 'CaseStatus','CaseId' 'CreatedDateTime',
+                        headers=['DisplayName', 'Description', 'ExternalId', 'CaseStatus', 'CaseId' 'CreatedDateTime',
                                  'LastModifiedDateTime', 'LastModifiedByName', 'ClosedByName'],
                         headerTransform=pascalToSpace, removeNull=True)
     )
 
 
+def close_ediscovery_case_command(client: MsGraphClient, args):
+    """
+    """
+    client.close_edsicovery_case(args.get('case_id'))
+    return CommandResults(readable_output='Case was closed successfully.')
+
+
 def update_ediscovery_case_command(client: MsGraphClient, args):
     """
     """
-    client.update_edsicovery_case(args.get('case_id'), args.get('display_name'), args.get('description'), args.get('external_id'))
+    client.update_edsicovery_case(args.get('case_id'), args.get('display_name'), args.get('description'),
+                                  args.get('external_id'))
     return CommandResults(readable_output='Case was updated successfully.')
+
 
 def list_ediscovery_case_command(client: MsGraphClient, args):
     """
@@ -847,7 +860,8 @@ def main():
         'msg-create-alert-comment': create_alert_comment_command,
         'msg-create-ediscovery-case': create_ediscovery_case_command,
         'msg-list-ediscovery-case': list_ediscovery_case_command,
-        'msg-update-ediscovery-case': update_ediscovery_case_command
+        'msg-update-ediscovery-case': update_ediscovery_case_command,
+        'msg-close-ediscovery-case': close_ediscovery_case_command
 
     }
     command = demisto.command()
