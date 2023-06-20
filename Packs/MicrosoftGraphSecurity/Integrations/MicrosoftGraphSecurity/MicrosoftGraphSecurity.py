@@ -745,7 +745,7 @@ def ediscovery_cases_command_results(raw_case_list: list, raw_res=None):
         human_readable_list.append(to_hr(context))
     return CommandResults(
         outputs_prefix='MsGraph.eDiscoveryCase',
-        outputs_key_field='id',
+        outputs_key_field='CaseId',
         raw_response=raw_res or raw_case_list,
         outputs=context_list,
         readable_output=
