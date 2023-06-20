@@ -261,6 +261,10 @@ class MsGraphClient:
         url = f'security/cases/ediscoveryCases/{case_id}'
         self.ms_client.http_request(ok_codes=[204], method='DELETE', url_suffix=url, resp_type='text')
 
+    def create_edsicovery_custodian(self, case_id, email):
+        url = f'security/cases/ediscoveryCases/{case_id}/custodians'
+        return self.ms_client.http_request(method='POST', url_suffix=url, json_data={'email': email})
+
 
 def create_filter_query(filter_param: str, providers_param: str, service_sources_param: str):
     """
@@ -726,9 +730,35 @@ def create_ediscovery_case_command(client: MsGraphClient, args: dict):
     return ediscovery_cases_command_results([res], res)
 
 
+def ediscovery_custodian_command_results(raw_custodian_list, raw_res=None):
+    def to_hr(ret_context: dict):
+        hr = ret_context.copy()
+        hr['LastModifiedByName'] = dict_safe_get(ret_context, ['LastModifiedBy', "User", "DisplayName"])
+        hr['ClosedByName'] = dict_safe_get(ret_context, ['ClosedBy', "User", "DisplayName"]) #todo relevant?
+        return hr
+
+    context_list = []
+    human_readable_list = []
+    for res in raw_custodian_list:
+        context = capitalize_dict_keys_first_letter(res,
+                                                    keys_to_replace={'status': 'CustodianStatus', 'id': 'CustodianId'})
+        context.pop('@odata.context', None)
+        context_list.append(context)
+        human_readable_list.append(to_hr(context))
+    return CommandResults(
+        outputs_prefix='MsGraph.ediscoveryCustodian',
+        outputs_key_field='CustodianId',
+        raw_response=raw_res or raw_custodian_list,
+        outputs=context_list,
+        readable_output=
+        tableToMarkdown('Results:', human_readable_list,
+                        headers=['DisplayName', 'Description','Email', 'CustodianStatus', 'CustodianId', 'CreatedDateTime',
+                                 'LastModifiedDateTime', 'LastModifiedByName', 'ClosedByName', 'AcknowledgedDateTime',
+                                 'HoldStatus', 'ReleasedDateTime'], headerTransform=pascalToSpace, removeNull=True))
+
+
 def ediscovery_cases_command_results(raw_case_list: list, raw_res=None):
     """
-    TODO closed by name, Last Modified By Name
     Args:
         raw_res: the raw_response to be used. If not provided assumed response==raw_res
         limit: max number of entries to return. Does not affect raw_result
@@ -769,6 +799,8 @@ def close_ediscovery_case_command(client: MsGraphClient, args):
     """
     client.close_edsicovery_case(args.get('case_id'))
     return CommandResults(readable_output='Case was closed successfully.')
+
+
 def reopen_ediscovery_case_command(client: MsGraphClient, args):
     """
     """
@@ -791,15 +823,22 @@ def delete_ediscovery_case_command(client: MsGraphClient, args):
     return CommandResults(readable_output='Case was deleted successfully.')
 
 
+def create_ediscovery_custodian_command(client: MsGraphClient, args):
+    """
+    """
+    res = client.create_edsicovery_custodian(args.get('case_id'), args.get('email'))
+    return ediscovery_custodian_command_results([res], res)
+
+
 def list_ediscovery_case_command(client: MsGraphClient, args):
     """
     """
     raw_res = client.list_ediscovery_cases(args.get('case_id'))
-    if args.get('case_id'):
-        case_list = [raw_res]  # api doesnt return a list
-    else:
-        case_list = raw_res.get('value')
+    if case_list := raw_res.get('value'):
         demisto.info(f'returned {raw_res.get("@odata.count")} results from the api')
+    else:
+        case_list = [raw_res]  # api doesnt return a list if only 1 result
+
     return ediscovery_cases_command_results(case_list[:args.get('limit', 50)], raw_res)
 
 
@@ -883,7 +922,8 @@ def main():
         'msg-update-ediscovery-case': update_ediscovery_case_command,
         'msg-close-ediscovery-case': close_ediscovery_case_command,
         'msg-reopen-ediscovery-case': reopen_ediscovery_case_command,
-        'msg-delete-ediscovery-case': delete_ediscovery_case_command
+        'msg-delete-ediscovery-case': delete_ediscovery_case_command,
+        'msg-create-ediscovery-custodian': create_ediscovery_custodian_command
 
     }
     command = demisto.command()
