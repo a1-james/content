@@ -11,7 +11,7 @@
     ],
     "tags": [],
     "useCases": [],
-    "keywords": [],
+    "keywords": ["test"],
     "dependencies": {},
     "marketplaces": [
         "xsoar",
