@@ -261,6 +261,10 @@ class MsGraphClient:
         url = f'security/cases/ediscoveryCases/{case_id}/custodians/{custodian_id}/release'
         self.ms_client.http_request(ok_codes=[202], method='POST', url_suffix=url, resp_type='text')
 
+    def activate_edsicovery_custodian(self, case_id, custodian_id):
+        url = f'security/cases/ediscoveryCases/{case_id}/custodians/{custodian_id}/activate'
+        self.ms_client.http_request(ok_codes=[202], method='POST', url_suffix=url, resp_type='text')
+
     def delete_edsicovery_case(self, case_id):
         url = f'security/cases/ediscoveryCases/{case_id}'
         self.ms_client.http_request(ok_codes=[204], method='DELETE', url_suffix=url, resp_type='text')
@@ -832,6 +836,12 @@ def release_ediscovery_custodian_command(client: MsGraphClient, args):
     client.release_edsicovery_custodian(args.get('case_id'), args.get('custodian_id'))
     return CommandResults(readable_output=f'Custodian with id {args.get("custodian_id")} Case was released from '
                                           f'case with id {args.get("case_id")} successfully.')
+def activate_ediscovery_custodian_command(client: MsGraphClient, args):
+    """
+    """
+    client.activate_edsicovery_custodian(args.get('case_id'), args.get('custodian_id'))
+    return CommandResults(readable_output=f'Custodian with id {args.get("custodian_id")} Case was reactivated on '
+                                          f'case with id {args.get("case_id")} successfully.')
 
 
 def delete_ediscovery_case_command(client: MsGraphClient, args):
@@ -956,6 +966,7 @@ def main():
         'msg-create-ediscovery-custodian': create_ediscovery_custodian_command,
         'msg-list-ediscovery-custodian': list_ediscovery_custodian_command,  # todo custodians? plural?
         'msg-release-ediscovery-custodian': release_ediscovery_custodian_command,
+        'msg-activate-ediscovery-custodian': activate_ediscovery_custodian_command,
 
     }
     command = demisto.command()
