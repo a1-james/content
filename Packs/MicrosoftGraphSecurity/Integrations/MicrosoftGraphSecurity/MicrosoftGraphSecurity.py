@@ -253,6 +253,10 @@ class MsGraphClient:
         url = f'security/cases/ediscoveryCases/{case_id}/close'
         self.ms_client.http_request(ok_codes=[204], method='POST', url_suffix=url, resp_type='text')
 
+    def reopen_edsicovery_case(self, case_id):
+        url = f'security/cases/ediscoveryCases/{case_id}/reopen'
+        self.ms_client.http_request(ok_codes=[204], method='POST', url_suffix=url, resp_type='text')
+
     def delete_edsicovery_case(self, case_id):
         url = f'security/cases/ediscoveryCases/{case_id}'
         self.ms_client.http_request(ok_codes=[204], method='DELETE', url_suffix=url, resp_type='text')
@@ -765,6 +769,11 @@ def close_ediscovery_case_command(client: MsGraphClient, args):
     """
     client.close_edsicovery_case(args.get('case_id'))
     return CommandResults(readable_output='Case was closed successfully.')
+def reopen_ediscovery_case_command(client: MsGraphClient, args):
+    """
+    """
+    client.reopen_edsicovery_case(args.get('case_id'))
+    return CommandResults(readable_output='Case was reopened successfully.')
 
 
 def update_ediscovery_case_command(client: MsGraphClient, args):
@@ -873,6 +882,7 @@ def main():
         'msg-list-ediscovery-case': list_ediscovery_case_command,
         'msg-update-ediscovery-case': update_ediscovery_case_command,
         'msg-close-ediscovery-case': close_ediscovery_case_command,
+        'msg-reopen-ediscovery-case': reopen_ediscovery_case_command,
         'msg-delete-ediscovery-case': delete_ediscovery_case_command
 
     }

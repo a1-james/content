@@ -910,6 +910,14 @@ script:
       isArray: false
       name: case_id
       required: true
+    description: Reopen an eDiscovery case.
+    execution: false
+    name:  msg-reopen-ediscovery-case
+  - arguments:
+    - description: The case id of the eDiscovery case.
+      isArray: false
+      name: case_id
+      required: true
     description: Delete an ediscoveryCase object.
     execution: false
     name:  msg-delete-ediscovery-case
