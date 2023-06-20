@@ -750,7 +750,7 @@ def ediscovery_cases_command_results(raw_case_list: list, raw_res=None):
         outputs=context_list,
         readable_output=
         tableToMarkdown('Results:', human_readable_list,
-                        headers=['DisplayName', 'Description', 'ExternalId', 'CaseStatus', 'CaseId' 'CreatedDateTime',
+                        headers=['DisplayName', 'Description', 'ExternalId', 'CaseStatus', 'CaseId', 'CreatedDateTime',
                                  'LastModifiedDateTime', 'LastModifiedByName', 'ClosedByName'],
                         headerTransform=pascalToSpace, removeNull=True)
     )
