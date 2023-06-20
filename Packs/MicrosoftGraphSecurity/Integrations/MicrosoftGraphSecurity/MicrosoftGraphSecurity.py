@@ -257,6 +257,10 @@ class MsGraphClient:
         url = f'security/cases/ediscoveryCases/{case_id}/reopen'
         self.ms_client.http_request(ok_codes=[204], method='POST', url_suffix=url, resp_type='text')
 
+    def release_edsicovery_custodian(self, case_id, custodian_id):
+        url = f'security/cases/ediscoveryCases/{case_id}/custodians/{custodian_id}/release'
+        self.ms_client.http_request(ok_codes=[202], method='POST', url_suffix=url, resp_type='text')
+
     def delete_edsicovery_case(self, case_id):
         url = f'security/cases/ediscoveryCases/{case_id}'
         self.ms_client.http_request(ok_codes=[204], method='DELETE', url_suffix=url, resp_type='text')
@@ -740,7 +744,7 @@ def ediscovery_custodian_command_results(raw_custodian_list, raw_res=None):
     def to_hr(ret_context: dict):
         hr = ret_context.copy()
         hr['LastModifiedByName'] = dict_safe_get(ret_context, ['LastModifiedBy', "User", "DisplayName"])
-        hr['ClosedByName'] = dict_safe_get(ret_context, ['ClosedBy', "User", "DisplayName"]) #todo relevant?
+        hr['ClosedByName'] = dict_safe_get(ret_context, ['ClosedBy', "User", "DisplayName"])  # todo relevant?
         return hr
 
     context_list = []
@@ -758,7 +762,7 @@ def ediscovery_custodian_command_results(raw_custodian_list, raw_res=None):
         outputs=context_list,
         readable_output=
         tableToMarkdown('Results:', human_readable_list,
-                        headers=['DisplayName','Email', 'CustodianStatus', 'CustodianId', 'CreatedDateTime',
+                        headers=['DisplayName', 'Email', 'CustodianStatus', 'CustodianId', 'CreatedDateTime',
                                  'LastModifiedDateTime', 'LastModifiedByName', 'ClosedByName', 'AcknowledgedDateTime',
                                  'HoldStatus', 'ReleasedDateTime'], headerTransform=pascalToSpace, removeNull=True))
 
@@ -804,14 +808,14 @@ def close_ediscovery_case_command(client: MsGraphClient, args):
     """
     """
     client.close_edsicovery_case(args.get('case_id'))
-    return CommandResults(readable_output='Case was closed successfully.')
+    return CommandResults(readable_output=f'Case with id {args.get("case_id")} was closed successfully.')
 
 
 def reopen_ediscovery_case_command(client: MsGraphClient, args):
     """
     """
     client.reopen_edsicovery_case(args.get('case_id'))
-    return CommandResults(readable_output='Case was reopened successfully.')
+    return CommandResults(readable_output=f'Case with id {args.get("case_id")} was reopened successfully.')
 
 
 def update_ediscovery_case_command(client: MsGraphClient, args):
@@ -819,7 +823,15 @@ def update_ediscovery_case_command(client: MsGraphClient, args):
     """
     client.update_edsicovery_case(args.get('case_id'), args.get('display_name'), args.get('description'),
                                   args.get('external_id'))
-    return CommandResults(readable_output='Case was updated successfully.')
+    return CommandResults(readable_output=f'Case with id {args.get("case_id")} was updated successfully.')
+
+
+def release_ediscovery_custodian_command(client: MsGraphClient, args):
+    """
+    """
+    client.release_edsicovery_custodian(args.get('case_id'), args.get('custodian_id'))
+    return CommandResults(readable_output=f'Custodian with id {args.get("custodian_id")} Case was released from '
+                                          f'case with id {args.get("case_id")} successfully.')
 
 
 def delete_ediscovery_case_command(client: MsGraphClient, args):
@@ -942,7 +954,8 @@ def main():
         'msg-reopen-ediscovery-case': reopen_ediscovery_case_command,
         'msg-delete-ediscovery-case': delete_ediscovery_case_command,
         'msg-create-ediscovery-custodian': create_ediscovery_custodian_command,
-        'msg-list-ediscovery-custodian': list_ediscovery_custodian_command #todo custodians? plural?
+        'msg-list-ediscovery-custodian': list_ediscovery_custodian_command,  # todo custodians? plural?
+        'msg-release-ediscovery-custodian': release_ediscovery_custodian_command,
 
     }
     command = demisto.command()
