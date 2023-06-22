@@ -838,7 +838,7 @@ def ediscovery_source_command_results(raw_case_list: list, source_type, raw_res=
                                   output_key_field=output_key_field,
                                   raw_keys_to_replace={'id': output_key_field},
                                   table_headers=['DisplayName', 'Email', output_key_field, 'HoldStatus',
-                                                 'CreatedDateTime', 'CreatedByName', 'CreatedByUPN', 'CreatedByAppName'
+                                                 'CreatedDateTime', 'CreatedByName', 'CreatedByUPN', 'CreatedByAppName',
                                                  'SiteWebUrl'] + source_type['unique_table_headers'],
                                   to_hr=to_hr)
 
