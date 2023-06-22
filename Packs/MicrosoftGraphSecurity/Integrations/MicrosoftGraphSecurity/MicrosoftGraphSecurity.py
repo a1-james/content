@@ -286,6 +286,11 @@ class MsGraphClient:
             'includedSources': included_sources
         })
 
+    def list_ediscovery_custodians_user_sources(self, case_id, custodian_id, user_source_id):
+        url = f'/security/cases/ediscoveryCases/{case_id}/custodians/{custodian_id}/userSources'
+        if user_source_id:
+            url += f'/{user_source_id}'
+        return self.ms_client.http_request(method='GET', url_suffix=url)
 
 def create_filter_query(filter_param: str, providers_param: str, service_sources_param: str):
     """
@@ -903,7 +908,7 @@ def list_ediscovery_case_command(client: MsGraphClient, args):
     else:
         case_list = [raw_res]  # api doesnt return a list if only 1 result
 
-    return ediscovery_cases_command_results(case_list[:args.get('limit', 50)], raw_res)
+    return ediscovery_cases_command_results(case_list[:arg_to_number(args.get('limit', 50))], raw_res)
 
 
 def list_ediscovery_custodian_command(client: MsGraphClient, args):
@@ -915,7 +920,21 @@ def list_ediscovery_custodian_command(client: MsGraphClient, args):
     else:
         case_list = [raw_res]  # api doesnt return a list if only 1 result
 
-    return ediscovery_custodian_command_results(case_list[:args.get('limit', 50)], raw_res)
+    return ediscovery_custodian_command_results(case_list[:arg_to_number(args.get('limit', 50))], raw_res)
+
+
+def list_ediscovery_custodian_user_sources_command(client: MsGraphClient, args):
+    """
+    """
+    raw_res = client.list_ediscovery_custodians_user_sources(args.get('case_id'), args.get('custodian_id'),
+                                                             args.get('user_source_id'))
+    demisto.debug(raw_res)
+    if source_list := raw_res.get('value'):
+        demisto.info(f'returned {len(source_list)} results from the api')
+    else:
+        source_list = [raw_res]  # api doesnt return a list if only 1 result
+
+    return ediscovery_user_source_command_results(source_list[:arg_to_number(args.get('limit', 50))], raw_res)
 
 
 def test_function(client: MsGraphClient, args):
@@ -1003,7 +1022,8 @@ def main():
         'msg-list-ediscovery-custodian': list_ediscovery_custodian_command,  # todo custodians? plural?
         'msg-release-ediscovery-custodian': release_ediscovery_custodian_command,
         'msg-activate-ediscovery-custodian': activate_ediscovery_custodian_command,
-        'msg-create-ediscovery-custodian-user-source': create_ediscovery_custodian_user_source_command
+        'msg-create-ediscovery-custodian-user-source': create_ediscovery_custodian_user_source_command,
+        'msg-list-ediscovery-custodian-user-sources': list_ediscovery_custodian_user_sources_command
 
     }
     command = demisto.command()
