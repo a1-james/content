@@ -1,3 +1,5 @@
+from enum import Enum
+
 import urllib3
 import demistomock as demisto
 from CommonServerPython import *
@@ -17,6 +19,20 @@ CMD_URL = API_V2_ENDPOINT
 API_VER = API_V2
 PAGE_SIZE_LIMIT_DICT = {API_V2: 2000, API_V1: 1000}
 API_V1_PAGE_LIMIT = 500
+
+CustodianSourceType = {
+    'USER': {
+        'type': 'User',
+        'url_suffix': 'userSources',
+        'unique_table_headers': ['IncludedSources']
+    },
+    'SITE': {
+        'type': 'Site',
+        'url_suffix': 'siteSources',
+        'unique_table_headers': []
+    },
+}
+
 POSSIBLE_FIELDS_TO_INCLUDE = ["All", "NetworkConnections", "Processes", "RegistryKeys", "UserStates", "HostStates",
                               "FileStates",
                               "CloudAppStates", "MalwareStates", "CustomerComments", "Triggers", "VendorInformation",
@@ -279,18 +295,27 @@ class MsGraphClient:
             url += f'/{custodian_id}'
         return self.ms_client.http_request(method='GET', url_suffix=url)
 
-    def activate_edsicovery_custodian_user_source(self, case_id, custodian_id, email, included_sources):
+    def create_edsicovery_custodian_user_source(self, case_id, custodian_id, email, included_sources):
         url = f'security/cases/ediscoveryCases/{case_id}/custodians/{custodian_id}/userSources'
         return self.ms_client.http_request(method='POST', url_suffix=url, json_data={
             'email': email,
             'includedSources': included_sources
         })
 
-    def list_ediscovery_custodians_user_sources(self, case_id, custodian_id, user_source_id):
-        url = f'/security/cases/ediscoveryCases/{case_id}/custodians/{custodian_id}/userSources'
-        if user_source_id:
-            url += f'/{user_source_id}'
+    def create_edsicovery_custodian_site_source(self, case_id, custodian_id, site):
+        url = f'security/cases/ediscoveryCases/{case_id}/custodians/{custodian_id}/siteSources'
+        return self.ms_client.http_request(method='POST', url_suffix=url, json_data={
+            'site': {
+                'webUrl': site,
+            }
+        })
+
+    def list_ediscovery_custodians_sources(self, case_id, custodian_id, source_id, source_type):
+        url = f'/security/cases/ediscoveryCases/{case_id}/custodians/{custodian_id}/{source_type["url_suffix"]}'
+        if source_id:
+            url += f'/{source_id}'
         return self.ms_client.http_request(method='GET', url_suffix=url)
+
 
 def create_filter_query(filter_param: str, providers_param: str, service_sources_param: str):
     """
@@ -765,7 +790,7 @@ def ediscovery_custodian_command_results(raw_custodian_list, raw_res=None):
 
     return to_msg_command_results(raw_object_list=raw_custodian_list,
                                   raw_res=raw_res,
-                                  outputs_prefix='MsGraph.ediscoveryCustodian',
+                                  outputs_prefix='MsGraph.eDiscoveryCustodian',
                                   output_key_field='CustodianId',
                                   raw_keys_to_replace={'status': 'CustodianStatus', 'id': 'CustodianId'},
                                   table_headers=['DisplayName', 'Email', 'CustodianStatus', 'CustodianId',
@@ -795,19 +820,26 @@ def to_msg_command_results(raw_object_list, raw_res, outputs_prefix, output_key_
                         headerTransform=pascalToSpace, removeNull=True))
 
 
-def ediscovery_user_source_command_results(raw_case_list: list, raw_res=None):
+def ediscovery_source_command_results(raw_case_list: list, source_type, raw_res=None):
+    type_name = source_type["type"]
+    demisto.debug(f'Returning command results for source {type_name}')
+
     def to_hr(ret_context: dict):
         hr = ret_context.copy()
         hr['CreatedByName'] = dict_safe_get(ret_context, ['CreatedBy', "User", "DisplayName"])
+        hr['CreatedByUPN'] = dict_safe_get(ret_context, ['CreatedBy', "User", "UserPrincipalName"])
+        hr['CreatedByAppName'] = dict_safe_get(ret_context, ['CreatedBy', "Application", "DisplayName"])
         return hr
 
+    output_key_field = f'{type_name}SourceId'
     return to_msg_command_results(raw_object_list=raw_case_list,
                                   raw_res=raw_res,
-                                  outputs_prefix='MsGraph.CustodianUserSource',
-                                  output_key_field='user_source_id',
-                                  raw_keys_to_replace={'id': 'UserSourceId'},
-                                  table_headers=['DisplayName', 'Email', 'UserSourceId', 'HoldStatus',
-                                                 'CreatedDateTime', 'SiteWebUrl', 'IncludedSources'],
+                                  outputs_prefix=f'MsGraph.Custodian{type_name}Source',
+                                  output_key_field=output_key_field,
+                                  raw_keys_to_replace={'id': output_key_field},
+                                  table_headers=['DisplayName', 'Email', output_key_field, 'HoldStatus',
+                                                 'CreatedDateTime', 'CreatedByName', 'CreatedByUPN',
+                                                 'SiteWebUrl'] + source_type['unique_table_headers'],
                                   to_hr=to_hr)
 
 
@@ -880,9 +912,17 @@ def activate_ediscovery_custodian_command(client: MsGraphClient, args):
 def create_ediscovery_custodian_user_source_command(client: MsGraphClient, args):
     """
     """
-    resp = client.activate_edsicovery_custodian_user_source(args.get('case_id'), args.get('custodian_id'),
-                                                            args.get('email'), args.get('included_sources'))
-    return ediscovery_user_source_command_results([resp], resp)
+    resp = client.create_edsicovery_custodian_user_source(args.get('case_id'), args.get('custodian_id'),
+                                                          args.get('email'), args.get('included_sources'))
+    return ediscovery_source_command_results([resp], CustodianSourceType['USER'], resp)
+
+
+def create_ediscovery_custodian_site_source_command(client: MsGraphClient, args):
+    """
+    """
+    resp = client.create_edsicovery_custodian_site_source(args.get('case_id'), args.get('custodian_id'),
+                                                          args.get('site'))
+    return ediscovery_source_command_results([resp], CustodianSourceType['SITE'], resp)
 
 
 def delete_ediscovery_case_command(client: MsGraphClient, args):
@@ -924,17 +964,25 @@ def list_ediscovery_custodian_command(client: MsGraphClient, args):
 
 
 def list_ediscovery_custodian_user_sources_command(client: MsGraphClient, args):
+    return list_ediscovery_custodian_sources(client, args, CustodianSourceType['USER'])
+
+
+def list_ediscovery_custodian_site_sources_command(client: MsGraphClient, args):
+    return list_ediscovery_custodian_sources(client, args, CustodianSourceType['SITE'])
+
+
+def list_ediscovery_custodian_sources(client: MsGraphClient, args, source_type):
     """
     """
-    raw_res = client.list_ediscovery_custodians_user_sources(args.get('case_id'), args.get('custodian_id'),
-                                                             args.get('user_source_id'))
-    demisto.debug(raw_res)
+    raw_res = client.list_ediscovery_custodians_sources(args.get('case_id'), args.get('custodian_id'),
+                                                        args.get(f"{source_type['type']}_source_id".lower()),
+                                                        source_type)
     if source_list := raw_res.get('value'):
         demisto.info(f'returned {len(source_list)} results from the api')
     else:
         source_list = [raw_res]  # api doesnt return a list if only 1 result
 
-    return ediscovery_user_source_command_results(source_list[:arg_to_number(args.get('limit', 50))], raw_res)
+    return ediscovery_source_command_results(source_list[:arg_to_number(args.get('limit', 50))], source_type, raw_res)
 
 
 def test_function(client: MsGraphClient, args):
@@ -1012,6 +1060,8 @@ def main():
         'msg-get-users': get_users_command,
         'msg-get-user': get_user_command,
         'msg-create-alert-comment': create_alert_comment_command,
+
+        # eDiscovery commands
         'msg-create-ediscovery-case': create_ediscovery_case_command,
         'msg-list-ediscovery-case': list_ediscovery_case_command,
         'msg-update-ediscovery-case': update_ediscovery_case_command,
@@ -1023,7 +1073,9 @@ def main():
         'msg-release-ediscovery-custodian': release_ediscovery_custodian_command,
         'msg-activate-ediscovery-custodian': activate_ediscovery_custodian_command,
         'msg-create-ediscovery-custodian-user-source': create_ediscovery_custodian_user_source_command,
-        'msg-list-ediscovery-custodian-user-sources': list_ediscovery_custodian_user_sources_command
+        'msg-list-ediscovery-custodian-user-sources': list_ediscovery_custodian_user_sources_command,
+        'msg-create-ediscovery-custodian-site-source': create_ediscovery_custodian_site_source_command,
+        'msg-list-ediscovery-custodian-site-sources': list_ediscovery_custodian_site_sources_command
 
     }
     command = demisto.command()
@@ -1062,6 +1114,8 @@ def main():
         elif demisto.command() == 'msg-generate-login-url':
             return_results(generate_login_url(client.ms_client))
         else:
+            if command not in commands:
+                raise NotImplementedError(f'The provided command {command} was not implemented.')
             command_res = commands[command](client, demisto.args())
             if isinstance(command_res, CommandResults):
                 return_results(command_res)
@@ -1070,7 +1124,7 @@ def main():
                 return_outputs(readable_output=human_readable, outputs=entry_context, raw_response=raw_response)
 
     except Exception as err:
-        return_error(str(err))
+        return_error(f'Failed to execute {command} command.\nError:\n{err}\nTraceback:{traceback.format_exc()}')
 
 
 from MicrosoftApiModule import *  # noqa: E402

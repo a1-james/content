@@ -1041,6 +1041,22 @@ script:
       isArray: false
       name: custodian_id
       required: true
+    - description: URL of the site; for example, https://contoso.sharepoint.com/sites/HumanResources.
+      isArray: false
+      name: site
+      required: true
+    description: Create a new userSource object associated with an eDiscovery custodian. Use command msg-list-custodians in order to get all available custodians.
+    execution: false
+    name: msg-create-ediscovery-custodian-site-source
+  - arguments:
+    - description: The id of the eDiscovery case.
+      isArray: false
+      name: case_id
+      required: true
+    - description: The id of the custodian on the given eDiscovery case.
+      isArray: false
+      name: custodian_id
+      required: true
     - description: The id of the userSource. If provided only the specified userSource will be returned.
       isArray: false
       name: user_source_id
@@ -1053,6 +1069,27 @@ script:
     description: Create a new userSource object associated with an eDiscovery custodian. Use command msg-list-custodians in order to get all available custodians.
     execution: false
     name: msg-list-ediscovery-custodian-user-sources
+  - arguments:
+    - description: The id of the eDiscovery case.
+      isArray: false
+      name: case_id
+      required: true
+    - description: The id of the custodian on the given eDiscovery case.
+      isArray: false
+      name: custodian_id
+      required: true
+    - description: The id of the siteSource. If provided only the specified userSource will be returned.
+      isArray: false
+      name: site_source_id
+      required: false
+    - description: Number of total results to return. Default is 50.
+      isArray: false
+      name: limit
+      required: false
+      defaultValue: 50
+    description: Create a new userSource object associated with an eDiscovery custodian. Use command msg-list-custodians in order to get all available custodians.
+    execution: false
+    name: msg-list-ediscovery-custodian-site-sources
   dockerimage: demisto/crypto:1.0.0.63672
   feed: false
   isfetch: true
