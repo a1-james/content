@@ -1090,6 +1090,22 @@ script:
     description: Create a new userSource object associated with an eDiscovery custodian. Use command msg-list-custodians in order to get all available custodians.
     execution: false
     name: msg-list-ediscovery-custodian-site-sources
+  - arguments:
+    - description: The id of the eDiscovery case.
+      isArray: false
+      name: case_id
+      required: true
+    - description: URL of the site; for example, https://contoso.sharepoint.com/sites/HumanResources.
+      isArray: false
+      name: site
+      required: false
+    - description: Email address of the user's mailbox.
+      isArray: false
+      name: email
+      required: false
+    description: Create a new userSource object associated with an eDiscovery custodian. Use command msg-list-custodians in order to get all available custodians.
+    execution: false
+    name: msg-create-ediscovery-non-custodial-data-source
   dockerimage: demisto/crypto:1.0.0.63672
   feed: false
   isfetch: true

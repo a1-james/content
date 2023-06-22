@@ -316,6 +316,15 @@ class MsGraphClient:
             url += f'/{source_id}'
         return self.ms_client.http_request(method='GET', url_suffix=url)
 
+    def create_ediscovery_non_custodial_data_source(self, case_id, site, email):
+        url = f'/security/cases/ediscoveryCases/{case_id}/noncustodialDataSources'
+        body = {
+            "dataSource": {"@odata.type": "microsoft.graph.security.userSource", "email": email}
+        } if email else {
+            "dataSource": {"@odata.type": "microsoft.graph.security.siteSource",
+                           "site": {"webUrl": site}}}
+        return self.ms_client.http_request(method='POST', url_suffix=url, json_data=body)
+
 
 def create_filter_query(filter_param: str, providers_param: str, service_sources_param: str):
     """
@@ -925,6 +934,27 @@ def create_ediscovery_custodian_site_source_command(client: MsGraphClient, args)
     return ediscovery_source_command_results([resp], CustodianSourceType['SITE'], resp)
 
 
+def create_ediscovery_non_custodial_data_source_command(client: MsGraphClient, args):
+    """
+    """
+    site = args.get('site') # todo check final name and site id
+    email = args.get('email')
+    if not (bool(site) ^ bool(email)):
+        raise ValueError('One of either the site argument or the email argument must be provided, not both')
+
+    resp = client.create_ediscovery_non_custodial_data_source(args.get('case_id'), site, email)
+    context_outputs = capitalize_dict_keys_first_letter(resp,
+                                                        keys_to_replace={'status': 'DataSourceStatus',
+                                                                         'id': 'DataSourceId'})
+    return CommandResults(
+        raw_response=resp,
+        outputs_prefix='MsGraph.NoncustodialDataSource',
+        outputs_key_field='DataSourceId',
+        outputs=context_outputs,
+        readable_output=tableToMarkdown('Results:', context_outputs, headerTransform=pascalToSpace, removeNull=True)
+    )
+
+
 def delete_ediscovery_case_command(client: MsGraphClient, args):
     """
     """
@@ -1075,7 +1105,8 @@ def main():
         'msg-create-ediscovery-custodian-user-source': create_ediscovery_custodian_user_source_command,
         'msg-list-ediscovery-custodian-user-sources': list_ediscovery_custodian_user_sources_command,
         'msg-create-ediscovery-custodian-site-source': create_ediscovery_custodian_site_source_command,
-        'msg-list-ediscovery-custodian-site-sources': list_ediscovery_custodian_site_sources_command
+        'msg-list-ediscovery-custodian-site-sources': list_ediscovery_custodian_site_sources_command,
+        'msg-create-ediscovery-non-custodial-data-source': create_ediscovery_non_custodial_data_source_command
 
     }
     command = demisto.command()
