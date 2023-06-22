@@ -1001,6 +1001,31 @@ script:
     description: Activate a custodian that has been released from a case to make them part of the case again. For details, see https://learn.microsoft.com/en-us/microsoft-365/compliance/ediscovery-manage-new-custodians?view=o365-worldwide#re-activate-custodian.
     execution: false
     name: msg-activate-ediscovery-custodian
+  - arguments:
+    - description: The id of the eDiscovery case.
+      isArray: false
+      name: case_id
+      required: true
+    - description: The id of the custodian on the given eDiscovery case.
+      isArray: false
+      name: custodian_id
+      required: true
+    - description: SMTP address of the user.
+      isArray: false
+      name: email
+      required: false
+    - description: 'Specifies which sources are included in this group. Possible values are: mailbox, site.'
+      isArray: true
+      name: included_sources
+      required: false
+      auto: PREDEFINED
+      predefined:
+        - mailbox
+        - site
+        - mailbox, site
+    description: Create a new userSource object associated with an eDiscovery custodian. Use command msg-list-custodians in order to get all available custodians.
+    execution: false
+    name: msg-create-ediscovery-custodian-user-source
   dockerimage: demisto/crypto:1.0.0.63672
   feed: false
   isfetch: true

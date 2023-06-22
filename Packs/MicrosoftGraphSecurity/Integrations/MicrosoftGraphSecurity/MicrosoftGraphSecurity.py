@@ -279,6 +279,13 @@ class MsGraphClient:
             url += f'/{custodian_id}'
         return self.ms_client.http_request(method='GET', url_suffix=url)
 
+    def activate_edsicovery_custodian_user_source(self, case_id, custodian_id, email, included_sources):
+        url = f'security/cases/ediscoveryCases/{case_id}/custodians/{custodian_id}/userSources'
+        return self.ms_client.http_request(method='POST', url_suffix=url, json_data={
+            'email': email,
+            'includedSources': included_sources
+        })
+
 
 def create_filter_query(filter_param: str, providers_param: str, service_sources_param: str):
     """
@@ -751,24 +758,52 @@ def ediscovery_custodian_command_results(raw_custodian_list, raw_res=None):
         hr['ClosedByName'] = dict_safe_get(ret_context, ['ClosedBy', "User", "DisplayName"])  # todo relevant?
         return hr
 
+    return to_msg_command_results(raw_object_list=raw_custodian_list,
+                                  raw_res=raw_res,
+                                  outputs_prefix='MsGraph.ediscoveryCustodian',
+                                  output_key_field='CustodianId',
+                                  raw_keys_to_replace={'status': 'CustodianStatus', 'id': 'CustodianId'},
+                                  table_headers=['DisplayName', 'Email', 'CustodianStatus', 'CustodianId',
+                                                 'CreatedDateTime', 'LastModifiedDateTime', 'LastModifiedByName',
+                                                 'ClosedByName', 'AcknowledgedDateTime',
+                                                 'HoldStatus', 'ReleasedDateTime'],
+                                  to_hr=to_hr)
+
+
+def to_msg_command_results(raw_object_list, raw_res, outputs_prefix, output_key_field, raw_keys_to_replace,
+                           table_headers, to_hr):
     context_list = []
     human_readable_list = []
-    for res in raw_custodian_list:
-        context = capitalize_dict_keys_first_letter(res,
-                                                    keys_to_replace={'status': 'CustodianStatus', 'id': 'CustodianId'})
+    for res in raw_object_list:
+        context = capitalize_dict_keys_first_letter(res, keys_to_replace=raw_keys_to_replace)
         context.pop('@odata.context', None)
         context_list.append(context)
         human_readable_list.append(to_hr(context))
     return CommandResults(
-        outputs_prefix='MsGraph.ediscoveryCustodian',
-        outputs_key_field='CustodianId',
-        raw_response=raw_res or raw_custodian_list,
+        outputs_prefix=outputs_prefix,
+        outputs_key_field=output_key_field,
+        raw_response=raw_res or raw_res,
         outputs=context_list,
         readable_output=
         tableToMarkdown('Results:', human_readable_list,
-                        headers=['DisplayName', 'Email', 'CustodianStatus', 'CustodianId', 'CreatedDateTime',
-                                 'LastModifiedDateTime', 'LastModifiedByName', 'ClosedByName', 'AcknowledgedDateTime',
-                                 'HoldStatus', 'ReleasedDateTime'], headerTransform=pascalToSpace, removeNull=True))
+                        headers=table_headers,
+                        headerTransform=pascalToSpace, removeNull=True))
+
+
+def ediscovery_user_source_command_results(raw_case_list: list, raw_res=None):
+    def to_hr(ret_context: dict):
+        hr = ret_context.copy()
+        hr['CreatedByName'] = dict_safe_get(ret_context, ['CreatedBy', "User", "DisplayName"])
+        return hr
+
+    return to_msg_command_results(raw_object_list=raw_case_list,
+                                  raw_res=raw_res,
+                                  outputs_prefix='MsGraph.CustodianUserSource',
+                                  output_key_field='user_source_id',
+                                  raw_keys_to_replace={'id': 'UserSourceId'},
+                                  table_headers=['DisplayName', 'Email', 'UserSourceId', 'HoldStatus',
+                                                 'CreatedDateTime', 'SiteWebUrl', 'IncludedSources'],
+                                  to_hr=to_hr)
 
 
 def ediscovery_cases_command_results(raw_case_list: list, raw_res=None):
@@ -788,24 +823,15 @@ def ediscovery_cases_command_results(raw_case_list: list, raw_res=None):
         hr['ClosedByName'] = dict_safe_get(ret_context, ['ClosedBy', "User", "DisplayName"])
         return hr
 
-    context_list = []
-    human_readable_list = []
-    for res in raw_case_list:
-        context = capitalize_dict_keys_first_letter(res, keys_to_replace={'status': 'CaseStatus', 'id': 'CaseId'})
-        context.pop('@odata.context', None)
-        context_list.append(context)
-        human_readable_list.append(to_hr(context))
-    return CommandResults(
-        outputs_prefix='MsGraph.eDiscoveryCase',
-        outputs_key_field='CaseId',
-        raw_response=raw_res or raw_case_list,
-        outputs=context_list,
-        readable_output=
-        tableToMarkdown('Results:', human_readable_list,
-                        headers=['DisplayName', 'Description', 'ExternalId', 'CaseStatus', 'CaseId', 'CreatedDateTime',
-                                 'LastModifiedDateTime', 'LastModifiedByName', 'ClosedByName'],
-                        headerTransform=pascalToSpace, removeNull=True)
-    )
+    return to_msg_command_results(raw_object_list=raw_case_list,
+                                  raw_res=raw_res,
+                                  outputs_prefix='MsGraph.eDiscoveryCase',
+                                  output_key_field='CaseId',
+                                  raw_keys_to_replace={'status': 'CaseStatus', 'id': 'CaseId'},
+                                  table_headers=['DisplayName', 'Description', 'ExternalId', 'CaseStatus', 'CaseId',
+                                                 'CreatedDateTime', 'LastModifiedDateTime', 'LastModifiedByName',
+                                                 'ClosedByName'],
+                                  to_hr=to_hr)
 
 
 def close_ediscovery_case_command(client: MsGraphClient, args):
@@ -836,12 +862,22 @@ def release_ediscovery_custodian_command(client: MsGraphClient, args):
     client.release_edsicovery_custodian(args.get('case_id'), args.get('custodian_id'))
     return CommandResults(readable_output=f'Custodian with id {args.get("custodian_id")} Case was released from '
                                           f'case with id {args.get("case_id")} successfully.')
+
+
 def activate_ediscovery_custodian_command(client: MsGraphClient, args):
     """
     """
     client.activate_edsicovery_custodian(args.get('case_id'), args.get('custodian_id'))
     return CommandResults(readable_output=f'Custodian with id {args.get("custodian_id")} Case was reactivated on '
                                           f'case with id {args.get("case_id")} successfully.')
+
+
+def create_ediscovery_custodian_user_source_command(client: MsGraphClient, args):
+    """
+    """
+    resp = client.activate_edsicovery_custodian_user_source(args.get('case_id'), args.get('custodian_id'),
+                                                            args.get('email'), args.get('included_sources'))
+    return ediscovery_user_source_command_results([resp], resp)
 
 
 def delete_ediscovery_case_command(client: MsGraphClient, args):
@@ -967,6 +1003,7 @@ def main():
         'msg-list-ediscovery-custodian': list_ediscovery_custodian_command,  # todo custodians? plural?
         'msg-release-ediscovery-custodian': release_ediscovery_custodian_command,
         'msg-activate-ediscovery-custodian': activate_ediscovery_custodian_command,
+        'msg-create-ediscovery-custodian-user-source': create_ediscovery_custodian_user_source_command
 
     }
     command = demisto.command()
